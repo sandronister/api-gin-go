@@ -8,12 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func ShowAllStudent(c *gin.Context) {
-	c.JSON(200, gin.H{
-		"message": "Show",
-	})
-}
-
 func Gretting(c *gin.Context) {
 	var name = c.Params.ByName("name")
 	c.JSON(200, gin.H{
@@ -25,6 +19,12 @@ func CreateStudent(c *gin.Context) {
 	var student model.Student
 
 	if err := c.ShouldBindJSON(&student); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error()})
+		return
+	}
+
+	if err := model.ValidateStudentData(&student); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error()})
 		return
@@ -59,4 +59,40 @@ func DeleteStudent(c *gin.Context) {
 	var student model.Student
 	database.DB.Delete(&student, id)
 	c.JSON(http.StatusNoContent, gin.H{})
+}
+
+func UpdateStudent(c *gin.Context) {
+	var id = c.Params.ByName("id")
+	var student model.Student
+	database.DB.First(&student, id)
+
+	if err := c.ShouldBindJSON(&student); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error()})
+		return
+	}
+
+	if err := model.ValidateStudentData(&student); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error()})
+		return
+	}
+
+	database.DB.Model(&student).UpdateColumns(student)
+	c.JSON(http.StatusNoContent, gin.H{})
+
+}
+
+func SearchStudentByCPF(c *gin.Context) {
+	var cpf = c.Params.ByName("cpf")
+	var student model.Student
+	database.DB.Where(&model.Student{CPF: cpf}).First(&student)
+
+	if student.ID == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"message": "Not Found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, student)
 }
